@@ -1,5 +1,4 @@
 services:
-  # Backend Service
   - type: web
     name: managemind-backend
     env: python
@@ -13,10 +12,9 @@ services:
       - key: DEBUG
         value: "false"
       - key: GEMINI_API_KEY
-        sync: false # User must set this in Render UI
+        sync: false
     rootDir: backend
 
-  # Frontend Service
   - type: web
     name: managemind-frontend
     runtime: static
