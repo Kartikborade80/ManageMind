@@ -17,7 +17,7 @@ services:
     rootDir: backend
 
   # Frontend Service
-  - type: static
+  - type:web 
     name: managemind-frontend
     env: static
     buildCommand: npm install && npm run build
