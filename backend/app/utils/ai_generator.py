@@ -4,6 +4,9 @@ Falls back gracefully to empty list if GEMINI_API_KEY is not configured.
 import os, json, re
 from typing import List, Dict
 
+from dotenv import load_dotenv
+load_dotenv()
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
 
@@ -21,15 +24,40 @@ async def generate_mcqs(syllabus_point: str, count: int) -> List[Dict]:
     Returns [] if API key is not set or call fails.
     """
     if not GEMINI_API_KEY:
+        print("[AI Generator] Missing GEMINI_API_KEY")
         return []
 
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        # Try models in order of preference/availability
+        models_to_try = [
+            "gemini-2.0-flash", 
+            "gemini-1.5-flash",
+            "gemini-2.5-flash"  # Experimental but worked in local test
+        ]
+        
+        model = None
+        last_error = ""
+        for model_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(model_name)
+                # Test the model with a tiny prompt to ensure it exists and has quota
+                model.generate_content("test", generation_config={"max_output_tokens": 1})
+                print(f"[AI Generator] Using model: {model_name}")
+                break
+            except Exception as e:
+                last_error = str(e)
+                print(f"[AI Generator] Model {model_name} failed: {last_error[:100]}...")
+                model = None
+        
+        if not model:
+            print(f"[AI Generator] All models failed. Last error: {last_error}")
+            return []
 
-        prompt = f"""You are an expert teacher for Diploma Business Studies (Unit 5: Supply Chain & HR Management).
-Generate exactly {count} multiple-choice questions for the following syllabus point:
+        prompt = f"""You are an expert teacher.
+Generate exactly {count} multiple-choice questions for the following syllabus point or topic:
 "{syllabus_point}"
 
 Rules:
@@ -37,6 +65,7 @@ Rules:
 - Exactly one correct answer
 - Include a short explanation (1-2 sentences)
 - Questions must be exam-style, clear and unambiguous
+- If the topic is technical, prioritize accurate terminology
 
 Return ONLY a valid JSON array in this exact format, no other text:
 [

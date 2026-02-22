@@ -559,6 +559,7 @@ const LiveQuizWrapper = ({ sessionId, duration, onFinish }) => {
             <QuizEngine
                 sessionQuestions={questions}
                 sessionId={sessionId}
+                onAnswerChange={(updated) => setAnswers(updated)}
                 onFinish={({ score, total }) => {
                     const subs = answers.map((a, i) => ({
                         mcq_id: questions[i]?.id,

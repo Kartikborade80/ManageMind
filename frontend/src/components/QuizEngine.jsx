@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 /* ── helpers ──────────────────────────────────────────────────── */
 const LETTERS = ['A', 'B', 'C', 'D']
 
-const QuizEngine = ({ unit = null, topic = null, sessionQuestions = null, sessionId = null, onFinish = null, onComplete = null }) => {
+const QuizEngine = ({ unit = null, topic = null, sessionQuestions = null, sessionId = null, onFinish = null, onComplete = null, onAnswerChange = null }) => {
     const [questions, setQuestions] = useState([])
     const [loading, setLoading] = useState(true)
     const [currentStep, setCurrentStep] = useState(0)
@@ -73,6 +73,7 @@ const QuizEngine = ({ unit = null, topic = null, sessionQuestions = null, sessio
         const updated = [...answers]
         updated[currentStep] = optId
         setAnswers(updated)
+        if (onAnswerChange) onAnswerChange(updated)
     }
 
     const goToQuestion = (idx) => setCurrentStep(idx)

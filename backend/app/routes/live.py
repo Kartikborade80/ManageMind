@@ -9,7 +9,7 @@ import random, string, json
 from ..database import get_db
 from ..models.models import LiveSession, LiveParticipant, User, MCQ
 from ..utils.rate_limit import limiter
-from ..utils.ai_generator import generate_mcqs_sync
+from ..utils.ai_generator import generate_mcqs
 
 router = APIRouter()
 
@@ -82,14 +82,20 @@ async def create_advanced_session(payload: CreateAdvancedSession, db: AsyncSessi
     topic_label = ", ".join(s.point for s in payload.syllabus_selections)
 
     for sel in payload.syllabus_selections:
-        qs = generate_mcqs_sync(sel.point, sel.count)
+        qs = await generate_mcqs(sel.point, sel.count)
         # Give each an in-memory id (negative to distinguish from DB ids)
         for i, q in enumerate(qs):
             q["_ai_idx"] = len(all_ai_questions) + i
             q["topic"] = "AI"
         all_ai_questions.extend(qs)
 
-    has_ai = len(all_ai_questions) > 0
+    if not all_ai_questions:
+        raise HTTPException(
+            status_code=500,
+            detail="AI failed to generate questions. Please try again or check API key."
+        )
+
+    has_ai = True
 
     session = LiveSession(
         host_id=payload.host_id,
