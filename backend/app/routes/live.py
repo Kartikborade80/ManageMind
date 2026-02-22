@@ -90,9 +90,10 @@ async def create_advanced_session(payload: CreateAdvancedSession, db: AsyncSessi
         all_ai_questions.extend(qs)
 
     if not all_ai_questions:
+        # Check if it was specifically an API key issue in logs
         raise HTTPException(
             status_code=500,
-            detail="AI failed to generate questions. Please try again or check API key."
+            detail="AI Teacher failed to generate questions. This is usually due to an invalid GEMINI_API_KEY or Quota limit on Render. Please verify your environment variables."
         )
 
     has_ai = True
