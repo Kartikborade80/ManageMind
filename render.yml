@@ -19,7 +19,7 @@ services:
   # Frontend Service
   - type: web
     name: managemind-frontend
-      runtime: static
+    runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
