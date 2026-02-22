@@ -24,8 +24,5 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: managemind-backend
-          property: host
+        value: https://managemind-backend.onrender.com
     rootDir: frontend
