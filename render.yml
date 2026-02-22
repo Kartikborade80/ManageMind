@@ -17,11 +17,11 @@ services:
     rootDir: backend
 
   # Frontend Service
-  - type: web 
+  - type: web
     name: managemind-frontend
-    env: static
+    runtime: static
     buildCommand: npm install && npm run build
-    publishPath: ./dist
+    staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
         fromService:
