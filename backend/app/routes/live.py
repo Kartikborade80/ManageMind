@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import and_
-from typing import List, Optional
+from sqlalchemy import and_, or_
+from typing import List, Optional, Union
 from datetime import datetime, timezone
 from pydantic import BaseModel
 import random, string, json
@@ -10,6 +11,7 @@ from ..database import get_db
 from ..models.models import LiveSession, LiveParticipant, User, MCQ
 from ..utils.rate_limit import limiter
 from ..utils.ai_generator import generate_mcqs
+from ..utils.pdf_exporter import generate_quiz_pdf, generate_host_session_pdf
 
 router = APIRouter()
 
@@ -25,7 +27,7 @@ class CreateAdvancedSession(BaseModel):
     syllabus_selections: List[SyllabusSelection]
 
 class AnswerSubmit(BaseModel):
-    mcq_id: int
+    mcq_id: Union[int, str]
     selected_option_id: str
 
 class ParticipantSubmit(BaseModel):
@@ -287,12 +289,17 @@ async def submit_exam(session_id: int, payload: ParticipantSubmit, db: AsyncSess
     answers_detail = []
 
     if session.mcqs:
-        # AI questions: build lookup by index
-        ai_questions = {f"ai_{session_id}_{i}": q for i, q in enumerate(session.mcqs)}
+        # AI questions: build lookup by index/id string
+        # Support both 'ai_X_Y' and raw index if needed
+        ai_questions = {str(q.get("_ai_idx", i)): q for i, q in enumerate(session.mcqs)}
+        # Also map by the formatted ID used in frontend: f"ai_{session_id}_{i}"
+        for i, q in enumerate(session.mcqs):
+            ai_questions[f"ai_{session_id}_{i}"] = q
+
         for ans in payload.answers:
             q = ai_questions.get(str(ans.mcq_id))
             if q:
-                is_correct = ans.selected_option_id == q.get("correct_option_id")
+                is_correct = str(ans.selected_option_id) == str(q.get("correct_option_id"))
                 if is_correct:
                     correct += 1
                 answers_detail.append({
@@ -302,18 +309,30 @@ async def submit_exam(session_id: int, payload: ParticipantSubmit, db: AsyncSess
                 })
     else:
         # DB questions
-        mcq_ids = [ans.mcq_id for ans in payload.answers if isinstance(ans.mcq_id, int)]
-        if mcq_ids:
-            mcq_result = await db.execute(select(MCQ).filter(MCQ.id.in_(mcq_ids)))
+        # Convert all mcq_ids to int for DB lookup, filter out non-integers
+        raw_ids = []
+        for ans in payload.answers:
+            try:
+                raw_ids.append(int(ans.mcq_id))
+            except (ValueError, TypeError):
+                continue
+
+        if raw_ids:
+            mcq_result = await db.execute(select(MCQ).filter(MCQ.id.in_(raw_ids)))
             mcq_map = {m.id: m for m in mcq_result.scalars().all()}
             for ans in payload.answers:
-                mcq = mcq_map.get(ans.mcq_id)
+                try:
+                    m_id = int(ans.mcq_id)
+                except (ValueError, TypeError):
+                    continue
+                
+                mcq = mcq_map.get(m_id)
                 if mcq:
-                    is_correct = ans.selected_option_id == mcq.correct_option_id
+                    is_correct = str(ans.selected_option_id) == str(mcq.correct_option_id)
                     if is_correct:
                         correct += 1
                     answers_detail.append({
-                        "mcq_id": ans.mcq_id,
+                        "mcq_id": m_id,
                         "selected": ans.selected_option_id,
                         "is_correct": is_correct
                     })
@@ -325,6 +344,37 @@ async def submit_exam(session_id: int, payload: ParticipantSubmit, db: AsyncSess
     await db.commit()
 
     return {"message": "Submitted", "score": correct, "total": len(answers_detail)}
+
+
+@router.get("/host/{host_id}")
+async def get_host_sessions(host_id: int, db: AsyncSession = Depends(get_db)):
+    """List sessions created by a specific host."""
+    result = await db.execute(
+        select(LiveSession)
+        .filter(LiveSession.host_id == host_id)
+        .order_by(LiveSession.created_at.desc())
+    )
+    sessions = result.scalars().all()
+    
+    output = []
+    for s in sessions:
+        # Get participant count for each
+        p_count_res = await db.execute(
+            select(func.count(LiveParticipant.id)).filter(LiveParticipant.session_id == s.id)
+        )
+        p_count = p_count_res.scalar()
+        
+        output.append({
+            "id": s.id,
+            "exam_id": s.exam_id,
+            "topic": s.topic,
+            "status": s.status,
+            "duration_minutes": s.duration_minutes,
+            "created_at": s.created_at,
+            "participants_count": p_count,
+            "has_ai_questions": bool(s.mcqs)
+        })
+    return output
 
 
 @router.get("/{session_id}/leaderboard")
@@ -362,3 +412,21 @@ async def get_leaderboard(session_id: int, db: AsyncSession = Depends(get_db)):
         },
         "leaderboard": leaderboard
     }
+
+@router.get("/{session_id}/export")
+async def export_session_pdf(session_id: int, db: AsyncSession = Depends(get_db)):
+    """Export live session results as PDF."""
+    result = await db.execute(select(LiveSession).filter(LiveSession.id == session_id))
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    lb_res = await get_leaderboard(session_id, db)
+    leaderboard = lb_res['leaderboard']
+    
+    pdf_buffer = generate_host_session_pdf(session, leaderboard)
+    
+    headers = {
+        'Content-Disposition': f'attachment; filename="ManageMind_LiveSession_{session.exam_id}.pdf"'
+    }
+    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)

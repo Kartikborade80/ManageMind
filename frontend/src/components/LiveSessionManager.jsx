@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Users, Play, Clock, Trophy, Loader2, CheckCircle, XCircle,
-    ArrowRight, Send, Crown, Star, Zap, BookOpen, Settings
+    ArrowRight, Send, Crown, Star, Zap, BookOpen, Settings, Download
 } from 'lucide-react'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
@@ -32,6 +32,7 @@ const LiveSessionManager = () => {
     const [joinCode, setJoinCode] = useState('')
     const [leaderboard, setLeaderboard] = useState(null)
     const [myScore, setMyScore] = useState(null)
+    const [hostSessions, setHostSessions] = useState([])
     const pollingRef = useRef(null)
 
     /* ── Polling ─────────────────────────────────────────────────────────── */
@@ -52,6 +53,19 @@ const LiveSessionManager = () => {
 
         return () => clearInterval(pollingRef.current)
     }, [mode, sessionData?.id])
+
+    useEffect(() => {
+        if (mode === 'select' && user) {
+            fetchHostSessions()
+        }
+    }, [mode, user])
+
+    const fetchHostSessions = async () => {
+        try {
+            const res = await api.get(`/api/live/host/${user.id}`)
+            setHostSessions(res.data)
+        } catch { /* ignore */ }
+    }
 
     /* ── Handlers ────────────────────────────────────────────────────────── */
     const handleCreateBasicInteractive = async ({ unitId, topic, duration }) => {
@@ -124,8 +138,11 @@ const LiveSessionManager = () => {
             })
             setMyScore({ score: res.data.score, total: res.data.total })
             setMode('student_result')
-        } catch {
-            setMyScore({ score, total })
+        } catch (err) {
+            const errorMsg = err.response?.data?.detail || 'Submission failed'
+            setError(errorMsg)
+            // Still show local result but with error
+            setMyScore({ score, total, sync_error: errorMsg })
             setMode('student_result')
         }
     }
@@ -173,6 +190,37 @@ const LiveSessionManager = () => {
                     <span className="mode-tag">Students</span>
                 </motion.div>
             </div>
+
+            {hostSessions.length > 0 && (
+                <div className="host-history mt-12 w-full max-w-4xl mx-auto">
+                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                        <Clock size={20} /> Your Recent Sessions
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {hostSessions.map(s => (
+                            <div key={s.id} className="glass-card p-4 flex justify-between items-center hover:bg-white/10 cursor-pointer transition-all"
+                                onClick={() => {
+                                    setSessionData(s)
+                                    if (s.status === 'waiting') setMode('host_waiting')
+                                    else if (s.status === 'active') setMode('host_active')
+                                    else {
+                                        fetchLeaderboard()
+                                        setMode('leaderboard')
+                                    }
+                                }}>
+                                <div>
+                                    <p className="font-bold text-lg">{s.exam_id}</p>
+                                    <p className="text-sm text-gray-400 truncate max-w-[200px]">{s.topic}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span>
+                                    <p className="text-xs text-gray-500 mt-1">{s.participants_count} joined</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     )
 
@@ -365,6 +413,9 @@ const LiveSessionManager = () => {
                     </div>
                 </div>
             )}
+            {myScore?.sync_error && (
+                <p className="text-red-400 text-xs mt-2">Error syncing with server: {myScore.sync_error}</p>
+            )}
             <p className="text-gray-400 text-sm mt-4">Waiting for host to close session & release leaderboard</p>
             <button className="btn-back mt-6" onClick={reset}>Return to Home</button>
         </motion.div>
@@ -376,7 +427,15 @@ const LiveSessionManager = () => {
             <div className="lb-header">
                 <Trophy size={40} className="lb-trophy" />
                 <h2>Final Leaderboard</h2>
-                <p>{leaderboard?.session?.exam_id} · {leaderboard?.session?.topic}</p>
+                <div className="flex items-center justify-center gap-4">
+                    <p>{leaderboard?.session?.exam_id} · {leaderboard?.session?.topic}</p>
+                    <button
+                        className="btn-download-pdf flex items-center gap-1 text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition-all"
+                        onClick={() => window.open(`${api.defaults.baseURL}/api/live/${sessionData.id}/export`, '_blank')}
+                    >
+                        <Download size={14} /> Download PDF
+                    </button>
+                </div>
             </div>
 
             {leaderboard?.leaderboard?.length > 0 ? (

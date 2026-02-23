@@ -104,7 +104,12 @@ async def export_quiz_pdf(attempt_id: int, db: AsyncSession = Depends(get_db)):
     result_mcqs = await db.execute(select(MCQ).filter(MCQ.id.in_(mcq_ids)))
     mcqs = result_mcqs.scalars().all()
     
-    pdf_buffer = generate_quiz_pdf(attempt, mcqs)
+    # Fetch user for name
+    user_res = await db.execute(select(User).filter(User.id == attempt.user_id))
+    user_obj = user_res.scalars().first()
+    user_name = (user_obj.full_name or user_obj.username) if user_obj else "Student"
+    
+    pdf_buffer = generate_quiz_pdf(attempt, mcqs, user_name=user_name)
     
     headers = {
         'Content-Disposition': f'attachment; filename="ManageMind_Quiz_Report_{attempt_id}.pdf"'
