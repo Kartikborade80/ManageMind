@@ -9,6 +9,7 @@ import LiveSessionManager from './components/LiveSessionManager'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import QuizSelection from './pages/QuizSelection'
+import About from './pages/About'
 import { useAuth } from './context/AuthContext'
 import { LogOut, Loader2 } from 'lucide-react'
 
@@ -48,6 +49,7 @@ function App() {
                     <span className={view === 'trending' ? 'active' : ''} onClick={() => setView('trending')}>Trending</span>
                     <span className={view === 'notes' ? 'active' : ''} onClick={() => setView('notes')}>Study Notes</span>
                     <span className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>Dashboard</span>
+                    <span className={view === 'about' ? 'active' : ''} onClick={() => setView('about')}>About</span>
                 </div>
                 <div className="nav-user">
                     <div className="nav-avatar" onClick={() => setView('profile')} title="View Profile">
@@ -88,6 +90,7 @@ function App() {
                 {view === 'notes' && <StudyNotes />}
                 {view === 'dashboard' && <Dashboard />}
                 {view === 'profile' && <Profile />}
+                {view === 'about' && <About />}
             </main>
         </div>
     )

@@ -50,3 +50,15 @@ async def vote_topic(topic_id: int, vote_type: str, db: AsyncSession = Depends(g
         
     await db.commit()
     return {"message": "Vote recorded"}
+
+@router.delete("/{topic_id}")
+async def delete_topic(topic_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(TrendingTopicModel).filter(TrendingTopicModel.id == topic_id))
+    topic = result.scalars().first()
+    
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+        
+    await db.delete(topic)
+    await db.commit()
+    return {"message": "Topic deleted"}
