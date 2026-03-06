@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import '../live_premium.css'
 import {
     Users, Play, Clock, Trophy, Loader2, CheckCircle, XCircle,
-    ArrowRight, Send, Crown, Star, Zap, BookOpen, Settings, Download
+    ArrowRight, Send, Crown, Star, Zap, BookOpen, Settings, Download,
+    Hash, ChevronRight
 } from 'lucide-react'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
@@ -196,9 +198,14 @@ const LiveSessionManager = () => {
                     <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
                         <Clock size={20} /> Your Recent Sessions
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {hostSessions.map(s => (
-                            <div key={s.id} className="glass-card p-4 flex justify-between items-center hover:bg-white/10 cursor-pointer transition-all"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {hostSessions.map((s, i) => (
+                            <motion.div
+                                key={s.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                className="session-card-premium"
                                 onClick={() => {
                                     setSessionData(s)
                                     if (s.status === 'waiting') setMode('host_waiting')
@@ -207,16 +214,32 @@ const LiveSessionManager = () => {
                                         fetchLeaderboard()
                                         setMode('leaderboard')
                                     }
-                                }}>
-                                <div>
-                                    <p className="font-bold text-lg">{s.exam_id}</p>
-                                    <p className="text-sm text-gray-400 truncate max-w-[200px]">{s.topic}</p>
+                                }}
+                            >
+                                <div className="session-icon-box">
+                                    <Hash size={24} />
                                 </div>
-                                <div className="text-right">
-                                    <span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span>
-                                    <p className="text-xs text-gray-500 mt-1">{s.participants_count} joined</p>
+                                <div className="session-info-main">
+                                    <div className="session-id-row">
+                                        <span className="session-id-text">{s.exam_id}</span>
+                                        <div className={`status-badge-premium ${s.status}`}>
+                                            {s.status === 'active' && <span className="pulse-indicator"></span>}
+                                            {s.status.toUpperCase()}
+                                        </div>
+                                    </div>
+                                    <div className="session-topic-text">
+                                        <BookOpen size={14} /> {s.topic}
+                                    </div>
                                 </div>
-                            </div>
+                                <div className="session-meta-right">
+                                    <div className="participant-count-pill">
+                                        <Users size={14} /> {s.participants_count || 0}
+                                    </div>
+                                    <div className="chevron-box">
+                                        <ChevronRight size={20} />
+                                    </div>
+                                </div>
+                            </motion.div>
                         ))}
                     </div>
                 </div>
@@ -423,18 +446,20 @@ const LiveSessionManager = () => {
 
     /* ── Leaderboard (host view) ──────────────────────────────────────────── */
     if (mode === 'leaderboard') return (
-        <div className="live-leaderboard">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="live-leaderboard">
             <div className="lb-header">
-                <Trophy size={40} className="lb-trophy" />
+                <Trophy size={60} className="lb-trophy" />
                 <h2>Final Leaderboard</h2>
-                <div className="flex items-center justify-center gap-4">
-                    <p>{leaderboard?.session?.exam_id} · {leaderboard?.session?.topic}</p>
-                    <button
-                        className="btn-download-pdf flex items-center gap-1 text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition-all"
-                        onClick={() => window.open(`${api.defaults.baseURL}/api/live/${sessionData.id}/export`, '_blank')}
+                <div className="flex flex-col items-center gap-2 mt-2">
+                    <p className="text-gray-500 font-semibold">{leaderboard?.session?.exam_id} • {leaderboard?.session?.topic}</p>
+                    <a
+                        href={`${api.defaults.baseURL}/api/live/${sessionData.id}/export`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-download-pdf mt-2"
                     >
-                        <Download size={14} /> Download PDF
-                    </button>
+                        <Download size={18} /> Download Results PDF
+                    </a>
                 </div>
             </div>
 
@@ -442,35 +467,40 @@ const LiveSessionManager = () => {
                 <div className="lb-table">
                     <div className="lb-row lb-head">
                         <span>Rank</span>
-                        <span>Student</span>
-                        <span>Score</span>
-                        <span>Time</span>
+                        <span>Student Name</span>
+                        <span className="text-center">Score</span>
+                        <span className="text-right">Time</span>
                     </div>
                     {leaderboard.leaderboard.map((row, i) => (
                         <motion.div
                             key={row.user_id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.08 }}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
                             className={`lb-row ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`}
                         >
                             <span className="lb-rank">
-                                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${row.rank}`}
+                                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                             </span>
                             <span className="lb-name">{row.full_name}</span>
-                            <span className="lb-score">{row.score} pts</span>
-                            <span className="lb-time">{row.time_taken_seconds}s</span>
+                            <span className="lb-score text-center">{row.score} pts</span>
+                            <span className="lb-time text-right">{row.time_taken_seconds}s</span>
                         </motion.div>
                     ))}
                 </div>
             ) : (
-                <p className="text-center text-gray-400 my-8">No submissions yet</p>
+                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <Users size={40} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-gray-400">No submissions recorded for this session yet.</p>
+                </div>
             )}
 
-            <div className="flex justify-center gap-4 mt-6">
-                <button className="btn-secondary" onClick={reset}>New Session</button>
+            <div className="flex justify-center mt-10">
+                <button className="btn-primary" onClick={reset} style={{ padding: '0.8rem 2.5rem' }}>
+                    Start New Session
+                </button>
             </div>
-        </div>
+        </motion.div>
     )
 
     return null

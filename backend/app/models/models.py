@@ -119,3 +119,14 @@ class PollVote(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     option_id = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class News(Base):
+    __tablename__ = "news"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(String, nullable=False)
+    category = Column(String, default="Technology")
+    image_url = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

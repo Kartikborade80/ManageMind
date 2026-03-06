@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, ThumbsUp, PlusCircle, Loader2, X, Send, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
+import { MessageSquare, ThumbsUp, ThumbsDown, PlusCircle, Loader2, X, Send, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -145,8 +145,13 @@ const TrendingTopic = () => {
                         className="topic-card"
                     >
                         <div className={`topic-badge ${topic.is_live ? 'live' : 'pending'}`}>
-                            {topic.is_live ? 'Live Trend' : 'Pending Approval'}
+                            {topic.is_live ? 'Live Trend' : `Pending: ${topic.approval_votes || 0}/5 Votes`}
                         </div>
+                        {topic.correction_votes > 10 && (
+                            <div className="topic-badge moderation-warning">
+                                ⚠️ Under Community Review
+                            </div>
+                        )}
                         <div className="topic-header-row">
                             <h3>{topic.title}</h3>
                             <div className="author-badge">
@@ -158,7 +163,14 @@ const TrendingTopic = () => {
 
                         <div className="topic-stats">
                             <span className="stat clickable" onClick={() => handleVote(topic.id, 'approval')}>
-                                <ThumbsUp size={16} /> {topic.approval_votes || 0} Votes
+                                <ThumbsUp size={16} /> {topic.approval_votes || 0}
+                            </span>
+                            <span className="stat clickable dislike-stat" onClick={() => {
+                                if (window.confirm('Disliking will move this topic towards removal (Requires 20+ dislikes). Continue?')) {
+                                    handleVote(topic.id, 'correction');
+                                }
+                            }}>
+                                <ThumbsDown size={16} /> {topic.correction_votes || 0}
                             </span>
                             <span
                                 className={`stat clickable ${expandedInsights === topic.id ? 'stat-active' : ''}`}

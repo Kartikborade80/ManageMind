@@ -5,7 +5,7 @@ from .database import engine, Base
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from .utils.rate_limit import limiter
-from .routes import auth, quizzes, trending, comments, polls, live
+from .routes import auth, quizzes, trending, comments, polls, live, news
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,6 +37,7 @@ app.include_router(trending.router, prefix="/api/trending", tags=["Trending Topi
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
 app.include_router(polls.router, prefix="/api/polls", tags=["Polls"])
 app.include_router(live.router, prefix="/api/live", tags=["Live Sessions"])
+app.include_router(news.router, prefix="/api/news", tags=["Latest News"])
 
 @app.get("/")
 async def root():

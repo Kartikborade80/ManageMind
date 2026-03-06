@@ -41,12 +41,18 @@ async def vote_topic(topic_id: int, vote_type: str, db: AsyncSession = Depends(g
         
     if vote_type == "approval":
         topic.approval_votes += 1
-    else:
-        topic.correction_votes += 1
-    
-    # Check if needs auto-approval (e.g., > 60% which we'll simulate for now)
-    if vote_type == "approval" and topic.approval_votes > 5: # Threshold example
-        topic.is_live = True
+        # Check if needs auto-approval (Threshold: 5 votes)
+        if topic.approval_votes >= 5:
+            topic.is_live = True
+    elif vote_type == "correction":
+        # Increment dislike/correction count
+        topic.correction_votes = (topic.correction_votes or 0) + 1
+        
+        # Auto-deletion only if dislikes > 20
+        if topic.correction_votes > 20:
+            await db.delete(topic)
+            await db.commit()
+            return {"message": "Topic removed due to excessive community disapproval"}
         
     await db.commit()
     return {"message": "Vote recorded"}

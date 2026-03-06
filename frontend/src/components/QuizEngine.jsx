@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle, XCircle, ArrowRight, Loader2, BookOpen, Send, RotateCcw, ArrowLeft } from 'lucide-react'
+import { CheckCircle, XCircle, ArrowRight, Loader2, BookOpen, Send, RotateCcw, ArrowLeft, TrendingUp, BarChart, Trophy, Zap, Info, Download } from 'lucide-react'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -19,6 +19,7 @@ const QuizEngine = ({ unit = null, topic = null, sessionQuestions = null, sessio
     const [attemptId, setAttemptId] = useState(null)
     const [timeLeft, setTimeLeft] = useState(30)
     const [showConfirm, setShowConfirm] = useState(false)
+    const [pendingAnswer, setPendingAnswer] = useState(null)
     const timerRef = useRef(null)
     const { user } = useAuth()
 
@@ -69,17 +70,26 @@ const QuizEngine = ({ unit = null, topic = null, sessionQuestions = null, sessio
 
     const handleSelect = (optId) => {
         if (answers[currentStep] !== null) return
+        setPendingAnswer(optId)
+    }
+
+    const handleConfirm = () => {
+        if (pendingAnswer === null || answers[currentStep] !== null) return
         clearInterval(timerRef.current)
         const updated = [...answers]
-        updated[currentStep] = optId
+        updated[currentStep] = pendingAnswer
         setAnswers(updated)
+        setPendingAnswer(null)
         if (onAnswerChange) onAnswerChange(updated)
     }
 
     const goToQuestion = (idx) => setCurrentStep(idx)
 
     const handleNext = () => {
-        if (currentStep < questions.length - 1) setCurrentStep(currentStep + 1)
+        if (currentStep < questions.length - 1) {
+            setPendingAnswer(null)
+            setCurrentStep(currentStep + 1)
+        }
     }
 
     /* Submit only answered questions */
@@ -147,66 +157,159 @@ const QuizEngine = ({ unit = null, topic = null, sessionQuestions = null, sessio
     /* ── Results Screen ─────────────────────────────────────── */
     if (finished) {
         return (
-            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="quiz-results">
-                <div className="results-hero">
-                    <div className="results-emoji">🎉</div>
-                    <h2>Quiz Completed!</h2>
-                    <p className="results-sub">Here's how you did on the questions you attempted</p>
-                </div>
-                <div className="results-summary">
-                    <div className="stat-card">
-                        <span className="stat-label">Score</span>
-                        <span className="stat-value">{score} / {reviewData.length}</span>
-                    </div>
-                    <div className="stat-card">
-                        <span className="stat-label">Accuracy</span>
-                        <span className="stat-value">{reviewData.length > 0 ? Math.round((score / reviewData.length) * 100) : 0}%</span>
-                    </div>
-                    <div className="stat-card">
-                        <span className="stat-label">Attempted</span>
-                        <span className="stat-value">{reviewData.length} / {questions.length}</span>
-                    </div>
-                </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="quiz-results-premium">
+                <motion.div
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="results-hero-premium"
+                >
+                    <div className="hero-glow" />
+                    <motion.div
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.2, type: 'spring' }}
+                        className="results-emoji-large"
+                    >
+                        {score / reviewData.length > 0.8 ? '🏆' : '🎉'}
+                    </motion.div>
+                    <h2 className="premium-title">Quiz Completed!</h2>
+                    <p className="premium-subtitle">Expert analysis of your performance is ready</p>
+                </motion.div>
 
-                <div className="results-review">
-                    <h3 className="review-heading">
-                        <BookOpen size={18} />
-                        Question Review &amp; Explanations
-                    </h3>
-                    {reviewData.map((ans, idx) => (
-                        <div key={idx} className={`review-card ${ans.is_correct ? 'review-correct' : 'review-wrong'}`}>
-                            <p className="review-q-number">Q{idx + 1}</p>
-                            <p className="review-question">{ans.question}</p>
-                            <div className="review-options">
-                                {ans.options.map((opt, oi) => {
-                                    let cls = 'review-option'
-                                    if (opt.id === ans.correct_option_id) cls += ' correct'
-                                    else if (opt.id === ans.selected_option_id) cls += ' wrong'
-                                    return (
-                                        <div key={opt.id} className={cls}>
-                                            <span className="rev-letter">{LETTERS[oi]}</span>
-                                            {opt.id === ans.correct_option_id && <CheckCircle size={13} />}
-                                            {opt.id === ans.selected_option_id && opt.id !== ans.correct_option_id && <XCircle size={13} />}
-                                            <span>{opt.text}</span>
-                                        </div>
-                                    )
-                                })}
+                <div className="results-summary-premium">
+                    {[
+                        { label: 'Total Score', value: `${score} / ${reviewData.length}`, icon: <Trophy size={20} /> },
+                        { label: 'Accuracy', value: `${reviewData.length > 0 ? Math.round((score / reviewData.length) * 100) : 0}%`, icon: <TrendingUp size={20} /> },
+                        { label: 'Attempted', value: `${reviewData.length} / ${questions.length}`, icon: <CheckCircle size={20} /> }
+                    ].map((stat, i) => (
+                        <motion.div
+                            key={i}
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.3 + (i * 0.1) }}
+                            className="premium-stat-card"
+                        >
+                            <div className="stat-icon-box">{stat.icon}</div>
+                            <div className="stat-info">
+                                <span className="stat-label-modern">{stat.label}</span>
+                                <span className="stat-value-modern">{stat.value}</span>
                             </div>
-                            <div className="review-explanation">
-                                <strong>Explanation:</strong> {ans.explanation}
-                            </div>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
 
-                <div className="results-actions">
-                    <button className="btn-primary" onClick={() => onComplete ? onComplete() : window.location.reload()}>
-                        <RotateCcw size={16} /> {onComplete ? 'Back to Selection' : 'Try Again'}
-                    </button>
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                    className="performance-premium-card"
+                >
+                    <div className="card-header-modern">
+                        <Zap className="text-amber-500" size={24} />
+                        <h3>Performance Analysis</h3>
+                    </div>
+
+                    <div className="analysis-grid-premium">
+                        <div className="analysis-text-box">
+                            <h4 className="analysis-heading">Insights</h4>
+                            <p className="analysis-desc">
+                                {score / reviewData.length > 0.8
+                                    ? "Spectacular work! You've mastered these concepts with high precision. Your understanding of the core principles is exceptionally strong."
+                                    : score / reviewData.length > 0.5
+                                        ? "Solid foundation. You've grasped the main points, but a few nuances still require attention. Focus on the review section below to bridge the gaps."
+                                        : "You're building momentum. While some areas were challenging, this is a great starting point for deeper study. Reviewing the explanations is key to your growth."
+                                }
+                            </p>
+                        </div>
+
+                        <div className="analysis-visual-box">
+                            <div className="performance-gauge-container">
+                                <div className="gauge-header">
+                                    <span>Proficiency Level</span>
+                                    <span className="gauge-percent">{reviewData.length > 0 ? Math.round((score / reviewData.length) * 100) : 0}%</span>
+                                </div>
+                                <div className="premium-progress-track">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${reviewData.length > 0 ? Math.round((score / reviewData.length) * 100) : 0}%` }}
+                                        transition={{ delay: 1, duration: 1.5, ease: "easeOut" }}
+                                        className="premium-progress-fill"
+                                    />
+                                </div>
+                                <p className="gauge-footer">Real-time accuracy based on this attempt</p>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <div className="results-review-premium">
+                    <h3 className="review-heading-premium">
+                        <BookOpen size={20} className="text-indigo-600" />
+                        Detailed Explanations
+                    </h3>
+                    {reviewData.map((ans, idx) => (
+                        <motion.div
+                            key={idx}
+                            initial={{ y: 20, opacity: 0 }}
+                            whileInView={{ y: 0, opacity: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: idx * 0.05 }}
+                            className={`review-card-modern ${ans.is_correct ? 'is-correct' : 'is-wrong'}`}
+                        >
+                            <div className="review-card-header">
+                                <span className="q-badge">Question {idx + 1}</span>
+                                {ans.is_correct ?
+                                    <span className="status-chip correct">Correct</span> :
+                                    <span className="status-chip wrong">Incorrect</span>
+                                }
+                            </div>
+                            <p className="review-question-text">{ans.question}</p>
+
+                            <div className="review-options-grid">
+                                {ans.options.map((opt, oi) => (
+                                    <div
+                                        key={opt.id}
+                                        className={`review-option-pill ${opt.id === ans.correct_option_id ? 'correct-pill' :
+                                            opt.id === ans.selected_option_id ? 'wrong-pill' : 'idle-pill'
+                                            }`}
+                                    >
+                                        <div className="pill-letter">{LETTERS[oi]}</div>
+                                        <span className="pill-text">{opt.text}</span>
+                                        {opt.id === ans.correct_option_id && <CheckCircle size={14} className="ml-auto text-emerald-500" />}
+                                        {opt.id === ans.selected_option_id && opt.id !== ans.correct_option_id && <XCircle size={14} className="ml-auto text-rose-500" />}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="explanation-luxury">
+                                <div className="exp-icon"><Info size={16} /></div>
+                                <div className="exp-content">
+                                    <h5>Insightful Explanation</h5>
+                                    <p>{ans.explanation}</p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+
+                <div className="results-actions-premium mt-12 pb-12 overflow-visible">
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="btn-premium-action main"
+                        onClick={() => onComplete ? onComplete() : window.location.reload()}
+                    >
+                        <RotateCcw size={18} /> {onComplete ? 'Back to Library' : 'Retake Quiz'}
+                    </motion.button>
                     {attemptId && (
-                        <button className="btn-secondary" onClick={handleDownload}>
-                            Download PDF Report
-                        </button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="btn-premium-action sub"
+                            onClick={handleDownload}
+                        >
+                            <Download size={18} /> Download Results PDF
+                        </motion.button>
                     )}
                 </div>
             </motion.div>
@@ -322,46 +425,69 @@ const QuizEngine = ({ unit = null, topic = null, sessionQuestions = null, sessio
                         <div className="options-list">
                             {q.options.map((opt, oi) => {
                                 let state = 'idle'
-                                if (currentAnswer !== null) {
+                                if (answers[currentStep] !== null) {
                                     if (opt.id === q.correct_option_id) state = 'correct'
-                                    else if (opt.id === currentAnswer) state = 'wrong'
+                                    else if (opt.id === answers[currentStep]) state = 'wrong'
                                     else state = 'dim'
+                                } else if (pendingAnswer === opt.id) {
+                                    state = 'pending'
                                 }
+
                                 return (
                                     <motion.button
                                         key={opt.id}
-                                        whileHover={currentAnswer === null ? { x: 6 } : {}}
-                                        whileTap={currentAnswer === null ? { scale: 0.98 } : {}}
+                                        whileHover={answers[currentStep] === null ? { x: 6 } : {}}
+                                        whileTap={answers[currentStep] === null ? { scale: 0.98 } : {}}
                                         onClick={() => handleSelect(opt.id)}
                                         className={`option-btn-v2 state-${state}`}
-                                        disabled={currentAnswer !== null}
+                                        disabled={answers[currentStep] !== null}
                                     >
                                         <span className="opt-letter">{LETTERS[oi]}</span>
                                         <span className="opt-text">{opt.text}</span>
                                         {state === 'correct' && <CheckCircle size={18} className="opt-icon" />}
                                         {state === 'wrong' && <XCircle size={18} className="opt-icon" />}
+                                        {state === 'pending' && <div className="pending-dot" />}
                                     </motion.button>
                                 )
                             })}
                         </div>
 
-                        {currentAnswer !== null && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="inline-feedback"
-                            >
-                                <span className={currentAnswer === q.correct_option_id ? 'fb-correct' : 'fb-wrong'}>
-                                    {currentAnswer === q.correct_option_id ? '✅ Correct!' : '❌ Incorrect'}
-                                </span>
-                                <span className="fb-hint">Explanation shown in results</span>
-                                {currentStep < questions.length - 1 && (
-                                    <button className="btn-next" onClick={handleNext}>
-                                        Next <ArrowRight size={16} />
+                        <div className="quiz-footer mt-8">
+                            {currentAnswer === null && pendingAnswer !== null && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="flex justify-end"
+                                >
+                                    <button
+                                        className="btn-primary confirm-btn"
+                                        onClick={handleConfirm}
+                                    >
+                                        Confirm Answer
                                     </button>
-                                )}
-                            </motion.div>
-                        )}
+                                </motion.div>
+                            )}
+
+                            {currentAnswer !== null && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="flex items-center justify-between w-full"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className={currentAnswer === q.correct_option_id ? 'fb-correct' : 'fb-wrong'}>
+                                            {currentAnswer === q.correct_option_id ? '✅ Correct' : '❌ Incorrect'}
+                                        </span>
+                                    </div>
+
+                                    {currentStep < questions.length - 1 && (
+                                        <button className="btn-next" onClick={handleNext}>
+                                            Next Question <ArrowRight size={16} />
+                                        </button>
+                                    )}
+                                </motion.div>
+                            )}
+                        </div>
                     </motion.div>
                 </AnimatePresence>
             </div>
