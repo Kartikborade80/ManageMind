@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
+import TrendingNews from '../components/TrendingNews'
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -312,26 +313,9 @@ const Dashboard = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        className="dashboard-content grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                        className="dashboard-content"
                     >
-                        {news.map((item) => (
-                            <div key={item.id} className="news-card card border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden group">
-                                {item.image_url && (
-                                    <div className="h-48 overflow-hidden">
-                                        <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    </div>
-                                )}
-                                <div className="p-5">
-                                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">{item.category}</span>
-                                    <h3 className="text-lg font-bold text-gray-800 mt-2 line-clamp-2">{item.title}</h3>
-                                    <p className="text-gray-600 text-sm mt-3 line-clamp-3 leading-relaxed">{item.content}</p>
-                                    <div className="flex items-center justify-between mt-6">
-                                        <span className="text-xs text-gray-400">{new Date(item.created_at).toLocaleDateString()}</span>
-                                        <button className="text-indigo-600 font-semibold text-sm hover:underline">Read More →</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                        <TrendingNews news={news} />
                     </motion.div>
                 )}
             </AnimatePresence>

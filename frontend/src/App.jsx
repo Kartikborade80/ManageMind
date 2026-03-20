@@ -87,7 +87,14 @@ function App() {
                 )}
                 {view === 'live' && <LiveSessionManager />}
                 {view === 'trending' && <TrendingTopic />}
-                {view === 'notes' && <StudyNotes />}
+                {view === 'notes' && (
+                    <StudyNotes 
+                        onStartQuiz={(params) => {
+                            setActiveQuiz(params);
+                            setView('quizzes');
+                        }} 
+                    />
+                )}
                 {view === 'dashboard' && <Dashboard />}
                 {view === 'profile' && <Profile />}
                 {view === 'about' && <About />}

@@ -489,15 +489,18 @@ const LiveSessionManager = () => {
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                    <Users size={40} className="mx-auto text-gray-300 mb-2" />
-                    <p className="text-gray-400">No submissions recorded for this session yet.</p>
+                <div className="lb-empty-state">
+                    <div className="lb-empty-icon">
+                        <Users size={48} />
+                    </div>
+                    <h3>No Submissions Yet</h3>
+                    <p>Waiting for students to complete and submit their exams.</p>
                 </div>
             )}
 
-            <div className="flex justify-center mt-10">
-                <button className="btn-primary" onClick={reset} style={{ padding: '0.8rem 2.5rem' }}>
-                    Start New Session
+            <div className="lb-footer">
+                <button className="btn-primary btn-new-session" onClick={reset}>
+                    <Zap size={20} /> Start New Session
                 </button>
             </div>
         </motion.div>

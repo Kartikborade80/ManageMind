@@ -165,7 +165,7 @@ const QuizSelection = ({ onStartQuiz }) => {
                                 >
                                     <h5>Select Question Count:</h5>
                                     <div className="count-chips">
-                                        {[20, 30, 40].map(count => (
+                                        {[20, 30, 40, 50].map(count => (
                                             <button
                                                 key={count}
                                                 className={`count-chip ${testLength === count ? 'active' : ''}`}

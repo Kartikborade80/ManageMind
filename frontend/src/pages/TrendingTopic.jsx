@@ -22,6 +22,79 @@ const TrendingTopic = () => {
         fetchTopics()
     }, [])
 
+    const renderFormattedContent = (content) => {
+        if (!content) return null;
+
+        // If content is already HTML, render it as-is
+        if (content.trim().startsWith('<')) {
+            return <div className="article-main-html" dangerouslySetInnerHTML={{ __html: content }} />;
+        }
+
+        // Robust Pre-processing: ensure markers have newlines for consistent splitting
+        // This handles text like "Paragraph ### Header" or "Text 1. Item"
+        const prepared = content
+            .replace(/([^ \n])###/g, '$1\n\n###') // Header must start on new line
+            .replace(/([^ \n])([•-]) /g, '$1\n$2 ') // Bullet lists
+            .replace(/([^ \n])(\d+\.) /g, '$1\n$2 '); // Numbered lists
+
+        const lines = prepared.split('\n');
+        const elements = [];
+        let currentList = [];
+        let currentListType = null; // 'ul' or 'ol'
+
+        const flushList = () => {
+            if (currentList.length > 0) {
+                const ListTag = currentListType === 'ol' ? 'ol' : 'ul';
+                const listClass = currentListType === 'ol' ? 'article-list-ol' : 'article-list';
+                elements.push(<ListTag key={`list-${elements.length}`} className={listClass}>{currentList}</ListTag>);
+                currentList = [];
+                currentListType = null;
+            }
+        };
+
+        const parseInline = (text) => {
+            if (!text) return '';
+            const parts = text.split(/(\*\*.*?\*\*)/);
+            return parts.map((part, i) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    return <strong key={i} className="article-strong">{part.slice(2, -2)}</strong>;
+                }
+                return part;
+            });
+        };
+
+        lines.forEach((line, index) => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) {
+                flushList();
+                return;
+            }
+
+            // Headers
+            if (trimmedLine.startsWith('###')) {
+                flushList();
+                elements.push(<h4 key={`h4-${index}`} className="article-h4">{parseInline(trimmedLine.replace(/^###\s*/, ''))}</h4>);
+            } else if (trimmedLine.match(/^\d+\.\s/)) {
+                // Numbered list
+                if (currentListType !== 'ol') flushList();
+                currentListType = 'ol';
+                currentList.push(<li key={`li-${index}`} className="article-li">{parseInline(trimmedLine.replace(/^\d+\.\s*/, ''))}</li>);
+            } else if (trimmedLine.match(/^[-•]\s/)) {
+                // Bullet list
+                if (currentListType !== 'ul') flushList();
+                currentListType = 'ul';
+                currentList.push(<li key={`li-${index}`} className="article-li">{parseInline(trimmedLine.replace(/^[-•]\s*/, ''))}</li>);
+            } else {
+                // Paragraph
+                flushList();
+                elements.push(<p key={`p-${index}`} className="article-p">{parseInline(trimmedLine)}</p>);
+            }
+        });
+
+        flushList();
+        return <div className="article-wrapper">{elements}</div>;
+    };
+
     const fetchTopics = async () => {
         try {
             const res = await api.get('/api/trending')
@@ -264,7 +337,9 @@ const TrendingTopic = () => {
                                     exit={{ height: 0, opacity: 0 }}
                                     className="topic-article-body"
                                 >
-                                    <div className="article-main" dangerouslySetInnerHTML={{ __html: topic.article_content }} />
+                                    <div className="article-main">
+                                        {renderFormattedContent(topic.article_content)}
+                                    </div>
 
                                     {topic.real_world_example && (
                                         <div className="real-world-box">
